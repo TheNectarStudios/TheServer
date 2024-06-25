@@ -7,7 +7,7 @@ const multer = require('multer');
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Set up AWS S3
 AWS.config.update({
@@ -20,6 +20,9 @@ const s3 = new AWS.S3();
 const upload = multer({ dest: 'uploads/' });
 
 // Route to handle file upload
+app.get('/', (req, res) => { 
+  res.send('Server is running');
+});
 app.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).send("No file uploaded.");
