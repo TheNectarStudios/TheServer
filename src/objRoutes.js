@@ -10,7 +10,7 @@ router.use(bodyParser.raw({ type: 'application/octet-stream', limit: '50mb' }));
 
 // Route for uploading OBJ model
 router.post('/upload-obj', (req, res) => {
-    const objModelData = req.body; // Get the raw data from the request body
+    const objModelData = req.body; 
 
     if (!objModelData || !Buffer.isBuffer(objModelData)) {
         return res.status(400).json({ error: 'Invalid data format' });
