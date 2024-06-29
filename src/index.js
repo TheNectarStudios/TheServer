@@ -4,6 +4,7 @@ const AWS = require('aws-sdk');
 const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
+const userRoutes = require('./userRoutes');
 
 const app = express();
 app.use(bodyParser.json());
@@ -17,10 +18,10 @@ AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION,
-});
+}); 
 
 const s3 = new AWS.S3();
-
+app.use('/user', userRoutes);
 // Configure Multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
@@ -119,18 +120,26 @@ app.post('/upload-image', upload.single('file'), (req, res) => {
 });
 
 // Route to handle saving scene data (positions and rotations)
+// Route to handle saving scene data (positions and rotations)
 app.post('/save-positions-rotations', (req, res) => {
   let { username, propertyName, hotspots } = req.body;
+
   console.log(`Request Body: ${JSON.stringify(req.body)}`);
   console.log(`Username: ${username}, Property Name: ${propertyName}`);
-  if(username == undefined) {
-    username = "tempUser"; 
-    propertyName = "tempProperty";
-  }
 
   if (!username || !propertyName || !hotspots) {
-    console.error("Required information not provided.");
-    return res.status(400).send("Required information not provided.");
+      console.error("Required information not provided.");
+      return res.status(400).send("Required information not provided.");
+  }
+
+  // Convert hotspots to JSON if it's a string
+  if (typeof hotspots === 'string') {
+    try {
+      hotspots = JSON.parse(hotspots);
+    } catch (err) {
+      console.error("Error parsing hotspots JSON:", err);
+      return res.status(400).send("Invalid hotspots JSON format.");
+    }
   }
 
   const folderName = `models/${username}_${propertyName}`;
@@ -138,22 +147,23 @@ app.post('/save-positions-rotations', (req, res) => {
   const fileContent = JSON.stringify({ hotspots });
 
   const params = {
-    Bucket: process.env.S3_BUCKET_NAME,
-    Key: `${folderName}/${fileName}`,
-    Body: fileContent,
-    ContentType: 'application/json',
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `${folderName}/${fileName}`,
+      Body: fileContent,
+      ContentType: 'application/json',
   };
 
   s3.upload(params, (err, data) => {
-    if (err) {
-      console.error("Error uploading JSON to S3:", err);
-      return res.status(500).send("Error uploading JSON to S3.");
-    }
+      if (err) {
+          console.error("Error uploading JSON to S3:", err);
+          return res.status(500).send("Error uploading JSON to S3.");
+      }
 
-    console.log(`JSON uploaded successfully to S3: ${data.Location}`);
-    res.status(200).send(`JSON uploaded successfully to S3: ${data.Location}`);
+      console.log(`JSON uploaded successfully to S3: ${data.Location}`);
+      res.status(200).send(`JSON uploaded successfully to S3: ${data.Location}`);
   });
 });
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
