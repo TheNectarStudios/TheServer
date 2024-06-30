@@ -4,7 +4,9 @@ const User = require('./models/User');
 const twilio = require('twilio');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-// Load environment variables from .env file
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 dotenv.config();
 
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -15,22 +17,25 @@ mongoose.connect(mongoUri, {
   useUnifiedTopology: true,
   serverSelectionTimeoutMS: 30000, // Example: Increase timeout to 30 seconds
 })
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // User registration
 router.post('/register', async (req, res) => {
   try {
     const { username, phoneNumber, password } = req.body;
 
-    // Check if user with the same phone number already exists
-    const existingUser = await User.findOne({ phoneNumber });
+    // Check if user with the same phone number or username already exists
+    const existingUser = await User.findOne({ $or: [{ phoneNumber }, { username }] });
     if (existingUser) {
-      return res.status(400).send('User with this phone number already exists');
+      return res.status(400).send('User with this phone number or username already exists');
     }
 
     // Generate a unique verification code for each user
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Generate a unique userId
     const userId = require('crypto').randomBytes(16).toString("hex");
@@ -40,7 +45,7 @@ router.post('/register', async (req, res) => {
       userId,
       username,
       phoneNumber,
-      password,
+      password: hashedPassword,
       verificationCode,
     });
 
@@ -80,8 +85,41 @@ router.post('/verify', async (req, res) => {
       res.status(404).send('User not found');
     }
   } catch (error) {
-    console.error('Error during verification:', error); 
+    console.error('Error during verification:', error);
     res.status(500).send(error);
+  }
+});
+
+// User login
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find the user by username
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(400).send('Invalid username or password');
+    }
+
+    // Check if the password is correct
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).send('Invalid username or password');
+    }
+
+    // Check if the user's phone number is verified
+    if (!user.isVerified) {
+      return res.status(400).send('Phone number is not verified');
+    }
+
+    // Generate a JWT token
+    const token = jwt.sign({ userId: user.userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    res.status(200).send({ token, userId: user.userId });
+
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).send(error.message || 'Error during login');
   }
 });
 
