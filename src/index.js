@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
 const userRoutes = require('./userRoutes');
+
 // const downloadRoutes = require('./downloadRoutes');
 const app = express();
 app.use(bodyParser.json());
@@ -14,13 +15,13 @@ const port = process.env.PORT || 3000;
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Set up AWS S3 configuration
-AWS.config.update({
+AWS.config.update({ 
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION,
 }); 
 
-const s3 = new AWS.S3();
+const s3 = new AWS.S3(); 
 app.use('/user', userRoutes);
 // Configure Multer for file uploads
 const upload = multer({ dest: 'uploads/' });
