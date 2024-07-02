@@ -6,13 +6,17 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const userRoutes = require('./userRoutes');
 
-// const downloadRoutes = require('./downloadRoutes');
+const downloadRoutes = require('./downloadRoute');
+
+
+
+
 const app = express();
 app.use(bodyParser.json());
 
 
 const port = process.env.PORT || 3000;
-// aap.use('/download', downloadRoutes);
+app.use('/download', downloadRoutes);
 
 // Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '../.env') });  
