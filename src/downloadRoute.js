@@ -1,15 +1,12 @@
+// routes/fetchObjects.js
+
 const express = require('express');
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const path = require('path');
-const bodyParser = require('body-parser');
-
-const app = express();
-app.use(bodyParser.json());
-const port = process.env.PORT || 3000;
-
-// Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+const router = express.Router();
 
 // Set up AWS S3 configuration
 AWS.config.update({
@@ -24,11 +21,7 @@ AWS.config.update({
 
 const s3 = new AWS.S3();
 
-app.get('/', (req, res) => {
-  res.send('Server is running');
-});
-
-app.post('/fetch-objects', async (req, res) => {
+router.post('/fetch-objects', async (req, res) => {
   const { username, propertyName, localPath } = req.body;
 
   if (!username || !propertyName || !localPath) {
@@ -80,6 +73,4 @@ app.post('/fetch-objects', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+module.exports = router;
