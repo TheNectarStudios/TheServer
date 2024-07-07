@@ -60,7 +60,7 @@ router.post('/register', async (req, res) => {
     });
 
     // Handle response
-    res.status(200).send({ userId, verificationCode });
+    res.status(200).send("Verification Code send to your phone number. Please verify.");
 
   } catch (error) {
     console.error('Error during registration:', error);
@@ -70,23 +70,28 @@ router.post('/register', async (req, res) => {
 
 router.post('/verify', async (req, res) => {
   try {
-    const { phoneNumber, verificationCode } = req.body;
+    const { phoneNumber, otp } = req.body;
 
     const user = await User.findOne({ phoneNumber: phoneNumber });
     if (user) {
-      if (verificationCode === user.verificationCode) {
+      // Log to check values
+      console.log('Received verificationCode:', otp);
+      console.log('Stored user.verificationCode:', user.verificationCode);
+
+      // Adjust comparison as necessary
+      if (otp === user.verificationCode) {
         user.isVerified = true;
         await user.save();
-        res.status(200).send('Phone number verified successfully');
+        return res.status(200).json({ message: 'Phone number verified successfully' });
       } else {
-        res.status(401).send('Invalid verification code');
+        return res.status(401).json({ error: 'Invalid verification code' });
       }
     } else {
-      res.status(404).send('User not found');
+      return res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
     console.error('Error during verification:', error);
-    res.status(500).send(error);
+    return res.status(500).json({ error: error.message || 'Error during verification' });
   }
 });
 
