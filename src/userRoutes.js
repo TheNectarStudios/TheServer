@@ -23,7 +23,8 @@ mongoose.connect(mongoUri, {
 // User registration
 router.post('/register', async (req, res) => {
   try {
-    const { username, phoneNumber, password } = req.body;
+    const { username, phoneNumber, password ,role } = req.body;
+    console.log(role) ; 
 
     // Check if user with the same phone number or username already exists
     const existingUser = await User.findOne({ $or: [{ phoneNumber }, { username }] });
@@ -47,6 +48,7 @@ router.post('/register', async (req, res) => {
       phoneNumber,
       password: hashedPassword,
       verificationCode,
+      role,
     });
 
     // Save the user to MongoDB
@@ -71,9 +73,10 @@ router.post('/register', async (req, res) => {
 router.post('/verify', async (req, res) => {
   try {
     const { phoneNumber, verificationCode } = req.body;
-
+    
     const user = await User.findOne({ phoneNumber: phoneNumber });
     if (user) {
+      console.log(verificationCode);
       if (verificationCode === user.verificationCode) {
         user.isVerified = true;
         await user.save();
@@ -87,6 +90,7 @@ router.post('/verify', async (req, res) => {
   } catch (error) {
     console.error('Error during verification:', error);
     res.status(500).send(error);
+
   }
 });
 
@@ -122,5 +126,28 @@ router.post('/login', async (req, res) => {
     res.status(500).send(error.message || 'Error during login');
   }
 });
+router.post('/getuser', async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    // Find the user by username
+    const user = await User.findOne({ username });
+    console.log(user) ;
+    
+    // Check if the user exists
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    // Send the user's role
+    userRole = user.role ;
+    console.log(req.body) ;  
+    res.status(200).json({ userRole: user.role });
+  } catch (error) {
+    console.error('Error during getuser:', error);
+    res.status(500).send(error.message || 'Error during getuser');
+  }
+});
+
 
 module.exports = router;
