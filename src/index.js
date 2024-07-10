@@ -6,18 +6,28 @@ const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
 const userRoutes = require('./userRoutes');
-const ParentProperty = require('./models/ChildProperty');
+const ParentPropertyRoute = require('./models/ParentProperty'); 
 const downloadRoutes = require('./downloadRoute');
+const OrganisationRoute = require('./Organisation'); 
+const mongoose = require('mongoose') ;
 const app = express();
 app.use(bodyParser.json());
 app.use(cors()) ; 
-
+const mongoUri = process.env.MONGODB_URI; 
+mongoose.connect(mongoUri, {
+  useNewUrlParser: true, 
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000, // Example: Increase timeout to 30 seconds
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error('MongoDB connection error:', err));
 const port = process.env.PORT || 3000;
 app.use('/download', downloadRoutes);
-
+app.use('/organisation' , OrganisationRoute)
+app.use('/parentproperty' , ParentPropertyRoute)
 require('dotenv').config({ path: path.join(__dirname, '../.env') });  
 
-// Set up AWS S3 configuration
+// Set up AWS S3 configuration 
 AWS.config.update({ 
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,

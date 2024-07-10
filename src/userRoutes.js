@@ -10,23 +10,13 @@ const jwt = require('jsonwebtoken');
 dotenv.config();
 
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const mongoUri = process.env.MONGODB_URI;
-
-mongoose.connect(mongoUri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Example: Increase timeout to 30 seconds
-})
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
 // User registration
 router.post('/register', async (req, res) => {
   try {
     const { username, phoneNumber, password ,role } = req.body;
     console.log(role) ; 
 
-    // Check if user with the same phone number or username already exists
+    // Check if user with the same phone number or username alreadya exists
     const existingUser = await User.findOne({ $or: [{ phoneNumber }, { username }] });
     if (existingUser) {
       return res.status(400).send('User with this phone number or username already exists');
