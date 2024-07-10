@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const AWS = require('aws-sdk');
 const fs = require('fs');
+const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
 const userRoutes = require('./userRoutes');
@@ -9,7 +10,7 @@ const ParentProperty = require('./models/ChildProperty');
 const downloadRoutes = require('./downloadRoute');
 const app = express();
 app.use(bodyParser.json());
-
+app.use(cors()) ; 
 
 const port = process.env.PORT || 3000;
 app.use('/download', downloadRoutes);
@@ -231,7 +232,7 @@ app.post('/download-folder', (req, res) => {
         res.status(500).send("Error downloading files from S3.");
       });
   });
-});
+}); 
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
