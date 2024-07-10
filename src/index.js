@@ -5,12 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
 const userRoutes = require('./userRoutes');
-
+const ParentProperty = require('./models/ChildProperty');
 const downloadRoutes = require('./downloadRoute');
-
-
-
-
 const app = express();
 app.use(bodyParser.json());
 
@@ -18,7 +14,6 @@ app.use(bodyParser.json());
 const port = process.env.PORT || 3000;
 app.use('/download', downloadRoutes);
 
-// Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '../.env') });  
 
 // Set up AWS S3 configuration
@@ -140,7 +135,7 @@ app.post('/save-positions-rotations', (req, res) => {
 
   console.log(`Request Body: ${JSON.stringify(req.body)}`);
   console.log(`Username: ${username}, Property Name: ${propertyName}`);
-
+ 
   if (!username || !propertyName || !hotspots) {
     console.error("Required information not provided.");
     return res.status(400).send("Required information not provided.");
@@ -241,3 +236,4 @@ app.post('/download-folder', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+ 
