@@ -114,23 +114,25 @@ router.post('/login-root', async (req, res) => {
   }
 });
 router.get('/organisation/:organisationName', async (req, res) => {
-    try {
-      const organisationName = req.params.organisationName;
-  
-      // Find the organisation by its name
-      const organisation = await Organisation.findOne({ OrganisationName: organisationName });
-  
-      // Check if the organisation exists
-      if (!organisation) {
-        return res.status(404).send('Organisation not found');
-      }
-  
-      // Send the organisation details
-      res.status(200).json(organisation);
-    } catch (error) {
-      console.error('Error fetching organisation details:', error);
-      res.status(500).send(error.message || 'Error fetching organisation details');
+  try {
+    const organisationName = req.params.organisationName;
+    console.log('Requested Organisation Name:', organisationName); // Debug log
+
+    // Find the organisation by its name
+    const organisation = await Organisation.findOne({ OrganisationName: organisationName });
+
+    // Check if the organisation exists
+    if (!organisation) {
+      console.log('Organisation not found:', organisationName); // Debug log
+      return res.status(404).send('Organisation not found');
     }
-  });
+
+    // Send the organisation details
+    res.status(200).json(organisation);
+  } catch (error) {
+    console.error('Error fetching organisation details:', error);
+    res.status(500).send(error.message || 'Error fetching organisation details');
+  }
+});
 
 module.exports = router;
