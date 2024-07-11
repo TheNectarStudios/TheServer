@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Property = require('./models/Property');
+const Property = require('./models/ParentProperty');
 const Organisation = require('./models/Organisation');
 
 // Route to create a property and add the property name to the organisation
@@ -19,8 +19,10 @@ router.post('/create-property', async (req, res) => {
       return res.status(404).send('Organisation not found');
     }
 
+
     // Check if property already exists
     const existingProperty = await Property.findOne({ ParentPropertyName: parentPropertyName });
+
     if (existingProperty) {
       return res.status(400).send('Property with this name already exists');
     }
@@ -33,11 +35,9 @@ router.post('/create-property', async (req, res) => {
       BuilderName: builderName,
     });
 
-    // Save the property to MongoDB
     await newProperty.save();
-
-    // Add the property name to the organisation's properties array
     organisation.Properties.push(parentPropertyName);
+
     await organisation.save();
 
     // Handle response
