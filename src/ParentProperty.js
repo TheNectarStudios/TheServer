@@ -12,22 +12,16 @@ router.post('/create-property', async (req, res) => {
     if (!organisationName || !parentPropertyName || !location || !description || !builderName) {
       return res.status(400).send('All fields are required');
     }
-
-    // Check if organisation exists
     const organisation = await Organisation.findOne({ OrganisationName: organisationName });
     if (!organisation) {
       return res.status(404).send('Organisation not found');
     }
 
-
-    // Check if property already exists
     const existingProperty = await Property.findOne({ ParentPropertyName: parentPropertyName });
 
     if (existingProperty) {
       return res.status(400).send('Property with this name already exists');
     }
-
-    // Create a new property
     const newProperty = new Property({
       ParentPropertyName: parentPropertyName,
       Location: location,

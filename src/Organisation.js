@@ -3,7 +3,6 @@ const router = express.Router();
 const Organisation = require('./models/Organisation');
 const twilio = require('twilio');
 const dotenv = require('dotenv');
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -11,13 +10,19 @@ dotenv.config();
 
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+// Middleware for parsing JSON bodies
+router.use(express.json());
+
 // Organisation creation
 router.post('/create-organisation', async (req, res) => {
   try {
     const { organisationName, rootUsername, password, phoneNumber } = req.body;
 
+    // Debugging: Log received data
+    console.log("Received Data:", { organisationName, rootUsername, password, phoneNumber });
+
     // Check if organisation with the same name or root username already exists
-    const existingOrganisation = await Organisation.findOne({ OrganisationName: organisationName  });
+    const existingOrganisation = await Organisation.findOne({ OrganisationName: organisationName });
     if (existingOrganisation) {
       return res.status(400).send('Organisation with this name already exists');
     }
@@ -25,8 +30,14 @@ router.post('/create-organisation', async (req, res) => {
     // Generate a unique verification code for the root user
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // Debugging: Log password before hashing
+    console.log("Password Before Hashing:", password);
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Debugging: Log hashed password
+    console.log("Hashed Password:", hashedPassword);
 
     // Create a new organisation instance
     const newOrganisation = new Organisation({
@@ -47,7 +58,7 @@ router.post('/create-organisation', async (req, res) => {
       body: `Your verification code is ${verificationCode}`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber, // Assuming rootUsername is a phone number
-    });
+    }); 
 
     // Handle response
     res.status(200).send("Verification Code sent to your phone number. Please verify.");
@@ -60,10 +71,12 @@ router.post('/create-organisation', async (req, res) => {
 
 // Verify root user
 router.post('/verify-root', async (req, res) => {
+  console.log("Request received at /verify-root");
   try {
     const { phoneNumber, verificationCode } = req.body;
+    console.log("Request data:", req.body);
 
-    const organisation = await Organisation.findOne({ phoneNumber: phoneNumber  });
+    const organisation = await Organisation.findOne({ phoneNumber: phoneNumber });
     if (organisation) {
       if (verificationCode === organisation.verificationCode) {
         organisation.isRootVerified = true;
@@ -80,6 +93,7 @@ router.post('/verify-root', async (req, res) => {
     res.status(500).send(error);
   }
 });
+
 
 // Root user login
 router.post('/login-root', async (req, res) => {
@@ -113,25 +127,26 @@ router.post('/login-root', async (req, res) => {
     res.status(500).send(error.message || 'Error during login');
   }
 });
+
+// Get organisation details by name
 router.get('/organisation/:organisationName', async (req, res) => {
   try {
     const organisationName = req.params.organisationName;
-    console.log('Requested Organisation Name:', organisationName); // Debug log
 
     // Find the organisation by its name
     const organisation = await Organisation.findOne({ OrganisationName: organisationName });
 
     // Check if the organisation exists
     if (!organisation) {
-      console.log('Organisation not found:', organisationName); // Debug log
       return res.status(404).send('Organisation not found');
     }
 
     // Send the organisation details
     res.status(200).json(organisation);
+
   } catch (error) {
     console.error('Error fetching organisation details:', error);
-    res.status(500).send(error.message || 'Error fetching organisation details');
+    res.status(500).send('Error fetching organisation details');
   }
 });
 
