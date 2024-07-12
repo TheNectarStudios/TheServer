@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt'); 
+
 const OrganisationSchema = new mongoose.Schema({
   OrganisationName: {
     type: String,
@@ -9,38 +9,32 @@ const OrganisationSchema = new mongoose.Schema({
   RootUserName: {
     type: String,
     unique: true,
-    required: true, 
+    required: true,
   },
   password: {
     type: String,
     required: true,
   },
-  phoneNumber:{
-    type: String, 
-    require: true,
+  phoneNumber: {
+    type: String,
+    required: true,
   },
   verificationCode: {
     type: String,
     required: true,
-  }, 
+  },
   isRootVerified: {
     type: Boolean,
     default: false,
   },
   Usernames: {
-    type: [String], 
+    type: [String],
+    default: [], // Ensure it defaults to an empty array
   },
   Properties: {
-    type: [String], 
-  }
-});
-OrganisationSchema.pre('save', async function(next) {
-  if (this.isModified('password')) {
-    const bcrypt = require('bcrypt');
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-  }
-  next();
+    type: [String],
+    default: [], // Ensure it defaults to an empty array
+  },
 });
 
 module.exports = mongoose.model('Organisation', OrganisationSchema);

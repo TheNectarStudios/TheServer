@@ -6,6 +6,10 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     required: true,
   },
+  organisationName: {
+    type: String,
+    required: true,
+  },
   username: {
     type: String,
     unique: true,
@@ -13,7 +17,6 @@ const UserSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    unique: true,
     required: true,
   },
   password: {
@@ -23,15 +26,15 @@ const UserSchema = new mongoose.Schema({
   verificationCode: {
     type: String,
     required: true,
-  }, 
+  },
   isVerified: {
     type: Boolean,
     default: false,
   },
-  role:{
-    type: String, 
-    require: true,
-  }
+  role: {
+    type: String,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model('User', UserSchema);
