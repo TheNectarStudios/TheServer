@@ -45,5 +45,47 @@ router.post('/:parentPropertyName/add-child-property', async (req, res) => {
     }
 });
 
+
+
+
+
+
+
+
+router.post('/create-property', async (req, res) => {
+    try {
+      const { organisationName, parentPropertyName, childPropertyName } = req.body;
+      console.log(req.body);
+      // Validate required fields
+      if (!organisationName || !parentPropertyName || !childPropertyName) {
+        return res.status(400).send('All fields are required');
+      }
+      const organisation = await Organisation.findOne({ OrganisationName: organisationName });
+      if (!organisation) {
+        return res.status(404).send('Organisation not found');
+      }
+  
+      const existingProperty = await Property.findOne({ ParentPropertyName: parentPropertyName });
+  
+      const newProperty = new ChildProperty({
+        ParentPropertyName: parentPropertyName,
+        ChildPropertyName: childPropertyName,
+        OrganisationName: organisationName,
+      });
+            
+      await newProperty.save();
+      organisation.Properties.push(parentPropertyName);
+  
+      await organisation.save();
+  
+      // Handle response
+      res.status(201).send('Property created and added to the organisation successfully');
+  
+    } catch (error) {
+      console.error('Error creating property:', error);
+      res.status(500).send(error.message || 'Error creating property');
+    }
+  });
+
 // Export the router
 module.exports = router;

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Organisation = require('./Organisation');
 
 const ChildPropertySchema = new mongoose.Schema({
     ParentPropertyName: {
@@ -8,19 +9,24 @@ const ChildPropertySchema = new mongoose.Schema({
     },
     Location: {
         type: String,
-        required: true,
+        // required: true,
     },
     Description: {
         type: String,
-        required: true,
+        // required: true,
     },
     BuilderName: {
         type: String,
+        // required: true,
+    },
+    ChildPropertyName: {
+        type: String,
         required: true,
     },
-    ChildProperties: {
-        type: [String],
-    }
+    OrganisationName: { 
+        type: String,
+        required: true,
+    },
 });
 
 module.exports = mongoose.model('ChildProperty', ChildPropertySchema);
