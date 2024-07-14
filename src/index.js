@@ -9,6 +9,8 @@ const userRoutes = require('./userRoutes');
 const ParentRoute = require('./ParentProperty'); 
 const downloadRoutes = require('./downloadRoute');
 const OrganisationRoute = require('./Organisation'); 
+const ChildPropertyRoute = require('./ChildProperty');  
+const uploadRoutes = require('./uploadRoutes');
 const mongoose = require('mongoose') ;
 const app = express();
 app.use(bodyParser.json());
@@ -25,6 +27,9 @@ const port = process.env.PORT || 3000;
 app.use('/download', downloadRoutes);
 app.use('/organisation' , OrganisationRoute);
 app.use('/parentproperty' , ParentRoute);
+app.use("/childproperty" , ChildPropertyRoute);
+app.use('/upload', uploadRoutes); // Use upload routes
+
 require('dotenv').config({ path: path.join(__dirname, '../.env') });  
 
 // Set up AWS S3 configuration 
@@ -50,14 +55,16 @@ app.use((err, req, res, next) => {
 
 // Route to handle multiple file uploads (existing functionality)
 app.post('/upload', upload.fields([{ name: 'model' }, { name: 'texture' }]), (req, res) => {
-  const { directoryPath, username, propertyName } = req.body;
-  console.log(`Directory Path: ${directoryPath}, Username: ${username}, Property Name: ${propertyName}`);
+  const { directoryPath, organisationName , parentpropertyName , childPropetyName } = req.body;
+  // console.log(`Directory Path: ${directoryPath}, Username: ${}, Property Name: ${parentpropertyName}`);
 
-  if (!directoryPath || !username || !propertyName) {
+  if (!directoryPath || !organisationName || !parentpropertyName) {
     return res.status(400).send("Required information not provided.");
   }
+ 
+ 
+    const folderName = `${organisationName}/${parentpropertyName}/${childPropetyName}/model`;
 
-  const folderName = `models/${username}_${propertyName}/model`;
   const uploadPromises = [];
 
   // Read the directory and upload files to S3
