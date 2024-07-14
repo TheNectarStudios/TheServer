@@ -53,12 +53,23 @@ router.post('/create-organisation', async (req, res) => {
     // Save the organisation to MongoDB
     await newOrganisation.save();
 
+    // Create a new user instance for the root user
+    const newUser = new User({
+      username: rootUsername,
+      password: hashedPassword,
+      role: 'Creator',
+      organisationName: organisationName,
+    });
+
+    // Save the user to MongoDB
+    await newUser.save();
+
     // Send verification code via Twilio SMS
     await twilioClient.messages.create({
       body: `Your verification code is ${verificationCode}`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber, // Assuming rootUsername is a phone number
-    }); 
+    });
 
     // Handle response
     res.status(200).send("Verification Code sent to your phone number. Please verify.");
@@ -68,7 +79,6 @@ router.post('/create-organisation', async (req, res) => {
     res.status(500).send(error.message || 'Error during organisation creation');
   }
 });
-
 // Verify root user
 router.post('/verify-root', async (req, res) => {
   console.log("Request received at /verify-root");
@@ -128,7 +138,6 @@ router.post('/login-root', async (req, res) => {
   }
 });
 
-// Get organisation details by name
 router.get('/organisation/:organisationName', async (req, res) => {
   try {
     const organisationName = req.params.organisationName;
@@ -147,6 +156,64 @@ router.get('/organisation/:organisationName', async (req, res) => {
   } catch (error) {
     console.error('Error fetching organisation details:', error);
     res.status(500).send('Error fetching organisation details');
+  }
+});
+
+router.post('/add-username', async (req, res) => {
+  try {
+    const { organisationName, username } = req.body;
+
+    // Check if the user already exists
+    // const existingUser = await User.findOne({ username });
+    // if (existingUser) {
+    //   return res.status(400).send('User already exists');
+    // }
+
+    // Find the organisation by name
+    const organisation = await Organisation.findOne({ OrganisationName: organisationName });
+    if (!organisation) {
+      return res.status(404).send('Organisation not found');
+    }
+    if(organisation.Usernames.includes(username)){
+      return res.status(400).send('Username already exists');
+    }
+    // Add username to the organisation's Usernames array
+    organisation.Usernames.push(username);
+    await organisation.save();
+
+    res.status(200).send('Username added successfully');
+
+  } catch (error) {
+    console.error('Error adding username to organisation:', error);
+    res.status(500).send('Error adding username to organisation');
+  }
+});
+
+// Delete username from organisation
+router.post('/delete-username', async (req, res) => {
+  try {
+    const { organisationName, username } = req.body;
+
+    // Find the organisation by name
+    const organisation = await Organisation.findOne({ OrganisationName: organisationName });
+    if (!organisation) {
+      return res.status(404).send('Organisation not found');
+    }
+
+    // Check if the username exists in the organisation's Usernames array
+    if (!organisation.Usernames.includes(username)) {
+      return res.status(400).send('Username not found in organisation');
+    }
+
+    // Remove the username from the organisation's Usernames array
+    organisation.Usernames = organisation.Usernames.filter(name => name !== username);
+    await organisation.save();
+
+    res.status(200).send('Username deleted successfully');
+
+  } catch (error) {
+    console.error('Error deleting username from organisation:', error);
+    res.status(500).send('Error deleting username from organisation');
   }
 });
 

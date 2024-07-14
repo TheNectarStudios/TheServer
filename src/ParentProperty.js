@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Property = require('./models/ParentProperty');
 const Organisation = require('./models/Organisation');
-
+const ChildProperty = require('./models/ChildProperty');
 // Route to create a property and add the property name to the organisation
 router.post('/create-property', async (req, res) => {
   try {
     const { organisationName, parentPropertyName, location, description, builderName, } = req.body;
-
+    console.log(req.body);
     // Validate required fields
     if (!organisationName || !parentPropertyName || !location || !description || !builderName) {
       return res.status(400).send('All fields are required');
@@ -42,5 +42,52 @@ router.post('/create-property', async (req, res) => {
     res.status(500).send(error.message || 'Error creating property');
   }
 });
+
+
+router.get('/:parentPropertyName/child-properties', async (req, res) => {
+  try {
+    const { parentPropertyName } = req.params;
+    const property = await Property.findOne({ ParentPropertyName: parentPropertyName });
+
+    if (!property) {
+      return res.status(404).send('Parent property not found');
+    }
+
+    res.status(200).json(property.ChildProperties);
+  } catch (error) {
+    console.error('Error fetching child properties:', error);
+    res.status(500).send(error.message || 'Error fetching child properties');
+  }
+});
+
+router.delete('/:parentPropertyName/child-properties/:childPropertyName', async (req, res) => {
+  try {
+    const { parentPropertyName, childPropertyName } = req.params;
+    console.log()
+    // Remove child property from parent property's childProperties list
+    const parentProperty = await Property.findOneAndUpdate(
+      { ParentPropertyName: parentPropertyName },
+      { $pull: { ChildProperties: childPropertyName } },
+      { new: true }
+    );
+
+    if (!parentProperty) {
+      return res.status(404).send('Parent property not found');
+    }
+
+    // Remove child property from child property collection
+    const deletedChildProperty = await ChildProperty.findOneAndDelete({ ParentPropertyName: parentPropertyName, ChildPropertyName: childPropertyName });
+
+    if (!deletedChildProperty) {
+      return res.status(404).send('Child property not found');
+    }
+
+    res.status(200).send('Child property deleted successfully');
+  } catch (error) {
+    console.error('Error deleting child property:', error);
+    res.status(500).send(error.message || 'Error deleting child property');
+  }
+});
+
 
 module.exports = router;
