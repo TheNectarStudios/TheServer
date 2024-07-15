@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ParentProperty = require('./models/ParentProperty');
 const ChildProperty = require('./models/ChildProperty');
+const Organisation = require('./models/Organisation');
 
 // Route to add a new child property name
 router.post('/:parentPropertyName/add-child-property', async (req, res) => {
@@ -65,7 +66,7 @@ router.post('/create-property', async (req, res) => {
         return res.status(404).send('Organisation not found');
       }
   
-      const existingProperty = await Property.findOne({ ParentPropertyName: parentPropertyName });
+      const existingProperty = await ParentProperty.findOne({ ParentPropertyName: parentPropertyName });
   
       const newProperty = new ChildProperty({
         ParentPropertyName: parentPropertyName,
@@ -74,9 +75,10 @@ router.post('/create-property', async (req, res) => {
       });
             
       await newProperty.save();
-      organisation.Properties.push(parentPropertyName);
-  
-      await organisation.save();
+      // organisation.Properties.push(childPropertyName);
+      existingProperty.ChildProperties.push(childPropertyName);
+      await existingProperty.save();
+      // await organisation.save();
   
       // Handle response
       res.status(201).send('Property created and added to the organisation successfully');
