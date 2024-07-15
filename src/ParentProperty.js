@@ -44,6 +44,7 @@ router.post('/create-property', async (req, res) => {
 });
 
 
+
 router.get('/:parentPropertyName/child-properties', async (req, res) => {
   try {
     const { parentPropertyName } = req.params;
@@ -52,7 +53,6 @@ router.get('/:parentPropertyName/child-properties', async (req, res) => {
     if (!property) {
       return res.status(404).send('Parent property not found');
     }
-
     res.status(200).json(property.ChildProperties);
   } catch (error) {
     console.error('Error fetching child properties:', error);
