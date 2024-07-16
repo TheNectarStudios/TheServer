@@ -55,15 +55,16 @@ app.use((err, req, res, next) => {
 
 // Route to handle multiple file uploads (existing functionality)
 app.post('/upload', upload.fields([{ name: 'model' }, { name: 'texture' }]), (req, res) => {
-  const { directoryPath, organisationName , parentpropertyName , childPropetyName } = req.body;
+  const { directoryPath, organisationName , parentpropertyName , childPropertyName } = req.body;
   // console.log(`Directory Path: ${directoryPath}, Username: ${}, Property Name: ${parentpropertyName}`);
+  console.log(`Directory Path: ${directoryPath}, Organisation Name: ${organisationName}, Parent Property Name: ${parentpropertyName}, Child Property Name: ${childPropertyName}`);
 
   if (!directoryPath || !organisationName || !parentpropertyName) {
     return res.status(400).send("Required information not provided.");
   }
  
  
-    const folderName = `${organisationName}/${parentpropertyName}/${childPropetyName}/model`;
+    const folderName = `${organisationName}/${parentpropertyName}/${childPropertyName}/model`;
 
   const uploadPromises = [];
 
@@ -118,10 +119,10 @@ app.post('/upload', upload.fields([{ name: 'model' }, { name: 'texture' }]), (re
 // Route to handle single image upload from Unity application
 app.post('/upload-image', upload.single('file'), (req, res) => {
   console.log("Received request to upload image.");
-  let { username, propertyName, folderName } = req.body;
-  console.log(`Username: ${username}, Property Name: ${propertyName}, Folder Name: ${folderName}`);
+  let { organisationName, parentPropertyName, childPropertyName  } = req.body;
+  // console.log(`Username: ${organisationName}, Property Name: ${parentPropertyName}, Folder Name: ${childPropetyName}`);
 
-  if (!username || !propertyName || !folderName) {
+  if (!organisationName || !parentPropertyName || !childPropertyName ) {
     return res.status(400).send("Required information not provided.");
   }
 
@@ -132,7 +133,7 @@ app.post('/upload-image', upload.single('file'), (req, res) => {
 
   const params = {
     Bucket: process.env.S3_BUCKET_NAME,
-    Key: `models/${username}_${propertyName}/${folderName}/${file.originalname}`,
+    Key: `models/${organisationName}/${parentPropertyName}/${childPropertyName}/thumbnails/${file.originalname}`,
     Body: fs.createReadStream(file.path),
   };
 
@@ -146,20 +147,46 @@ app.post('/upload-image', upload.single('file'), (req, res) => {
     res.status(200).send(`File uploaded successfully to S3: ${data.Location}`);
   });
 });
+app.post('/upload-image-panaroma', upload.single('file'), (req, res) => {
+  console.log("Received request to upload image.");
+  let { organisationName, parentPropertyName, childPropertyName  } = req.body;
+  console.log(`Organisation Name: ${organisationName}, Parent Property Name: ${parentPropertyName}, Child Property Name: ${childPropertyName}`);
 
-// Route to handle saving scene data (positions and rotations)
-app.post('/save-positions-rotations', (req, res) => {
-  let { username, propertyName, hotspots } = req.body;
-
-  console.log(`Request Body: ${JSON.stringify(req.body)}`);
-  console.log(`Username: ${username}, Property Name: ${propertyName}`);
- 
-  if (!username || !propertyName || !hotspots) {
-    console.error("Required information not provided.");
+  if (!organisationName || !parentPropertyName || !childPropertyName) {
     return res.status(400).send("Required information not provided.");
   }
 
-  // Convert hotspots to JSON if it's a string
+  const file = req.file;
+  if (!file) {
+    return res.status(400).send("No file uploaded.");
+  }
+
+  const params = {
+    Bucket: process.env.S3_BUCKET_NAME,
+    Key: `${organisationName}/${parentPropertyName}/${childPropertyName}/PanaromaImages/${file.originalname}`,
+    Body: fs.createReadStream(file.path),
+  };
+
+  s3.upload(params, (err, data) => {
+    if (err) {
+      console.error("Error uploading file to S3:", err);
+      return res.status(500).send("Error uploading file to S3.");
+    }
+
+    console.log(`File uploaded successfully to S3: ${data.Location}`);
+    fs.unlinkSync(req.file.path); // Delete the file from the local storage after uploading
+    res.status(200).send(`File uploaded successfully to S3: ${data.Location}`);
+  });
+});
+
+
+// Route to handle saving scene data (positions and rotations)
+app.post('/save-positions-rotations', (req, res) => {
+  let { organisationName, parentPropertyName, childPropertyName, hotspots } = req.body; 
+
+  console.log(`Request Body: ${JSON.stringify(req.body)}`);
+  // console.log(`Username: ${username}, Property Name: ${propertyName}`); 
+ 
   if (typeof hotspots === 'string') {
     try {
       hotspots = JSON.parse(hotspots);
@@ -169,7 +196,7 @@ app.post('/save-positions-rotations', (req, res) => {
     }
   }
 
-  const folderName = `models/${username}_${propertyName}`;
+  const folderName = `${organisationName}/${parentPropertyName}/${childPropertyName}`;
   const fileName = 'info.json';
   const fileContent = JSON.stringify({ hotspots });
 

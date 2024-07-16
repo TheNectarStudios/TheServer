@@ -85,7 +85,7 @@ router.delete('/:parentPropertyName/child-properties/:childPropertyName', async 
     const deletedChildProperty = await ChildProperty.findOneAndDelete({
       ParentPropertyName: parentPropertyName,
       ChildPropertyName: childPropertyName
-    });
+    }); 
 
     if (!deletedChildProperty) {
       return res.status(404).send('Child property not found');
