@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Organisation = require('./models/Organisation');
+const User = require('./models/User');
 const twilio = require('twilio');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
@@ -45,7 +46,7 @@ router.post('/create-organisation', async (req, res) => {
       RootUserName: rootUsername,
       password: hashedPassword,
       phoneNumber: phoneNumber,
-      verificationCode,
+      verificationCode: verificationCode,
       Usernames: [],
       Properties: [],
     });
@@ -57,6 +58,7 @@ router.post('/create-organisation', async (req, res) => {
     const newUser = new User({
       username: rootUsername,
       password: hashedPassword,
+      phoneNumber: phoneNumber,
       role: 'Creator',
       organisationName: organisationName,
     });
@@ -87,10 +89,13 @@ router.post('/verify-root', async (req, res) => {
     console.log("Request data:", req.body);
 
     const organisation = await Organisation.findOne({ phoneNumber: phoneNumber });
+    const user = await User.findOne({ username: organisation.RootUserName });
     if (organisation) {
       if (verificationCode === organisation.verificationCode) {
         organisation.isRootVerified = true;
+        user.isVerified = true;
         await organisation.save();
+        await user.save();
         return res.status(200).json({ message: 'Root user verified successfully' });
       } else {
         return res.status(401).json({ error: 'Invalid verification code' });

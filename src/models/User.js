@@ -4,7 +4,7 @@ const UserSchema = new mongoose.Schema({
   userId: {
     type: String,
     unique: true,
-    required: true,
+    // required: true,
   },
   organisationName: {
     type: String,
@@ -25,7 +25,7 @@ const UserSchema = new mongoose.Schema({
   },
   verificationCode: {
     type: String,
-    required: true,
+    // required: true,
   },
   isVerified: {
     type: Boolean,
