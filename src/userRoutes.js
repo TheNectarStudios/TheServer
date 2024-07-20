@@ -36,7 +36,6 @@ router.post('/register', async (req, res) => {
 
     // Create a new user instance
     const newUser = new User({
-      userId,
       username,
       phoneNumber,
       password: hashedPassword,
@@ -114,6 +113,7 @@ router.post('/login', async (req, res) => {
     // Check if the password is correct
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.log('Invalid username or password');
       return res.status(400).send('Invalid username or password');
     }
 
@@ -126,9 +126,14 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     // Include the organisation name in the response
+    if(user.organisationName ) {
     const organisationName = user.organisationName; // Assuming user model has organisationName field
-
+    console.log('User logged in successfully123:', user);
     res.status(200).send({ token, organisationName });
+    } else{
+      console.log('User logged in successfully:', user);
+      res.status(200).send({ token });
+    }
 
   } catch (error) {
     console.error('Error during login:', error);

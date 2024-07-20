@@ -5,7 +5,6 @@ const ChildPropertySchema = new mongoose.Schema({
     ParentPropertyName: {
         type: String,
         required: true,
-        unique: true,
     },
     Location: {
         type: String,

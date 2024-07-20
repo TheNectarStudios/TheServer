@@ -59,13 +59,14 @@ router.post('/create-organisation', async (req, res) => {
       username: rootUsername,
       password: hashedPassword,
       phoneNumber: phoneNumber,
-      role: 'Creator',
+      role: 'Creator', 
       organisationName: organisationName,
     });
 
     // Save the user to MongoDB
-    await newUser.save();
-
+    await newUser.save().then(() => {
+      console.log("User saved successfully");
+    });
     // Send verification code via Twilio SMS
     await twilioClient.messages.create({
       body: `Your verification code is ${verificationCode}`,
@@ -93,7 +94,7 @@ router.post('/verify-root', async (req, res) => {
     if (organisation) {
       if (verificationCode === organisation.verificationCode) {
         organisation.isRootVerified = true;
-        user.isVerified = true;
+        user.isVerified = !user.isVerified;
         await organisation.save();
         await user.save();
         return res.status(200).json({ message: 'Root user verified successfully' });
