@@ -88,6 +88,15 @@ router.post('/create-property', async (req, res) => {
       res.status(500).send(error.message || 'Error creating property');
     }
   });
+  router.get('/child-properties', async (req, res) => {
+    try {
+        const childProperties = await ChildProperty.find();
+        res.status(200).json(childProperties);
+    } catch (error) {
+        console.error('Error fetching parent properties:', error);
+        res.status(500).send(error.message || 'Error fetching parent properties');
+    }
+});
 
 // Export the router
 module.exports = router;
