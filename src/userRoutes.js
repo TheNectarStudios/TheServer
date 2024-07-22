@@ -163,6 +163,30 @@ router.post('/getuser', async (req, res) => {
   }
 });
 
+router.get('/getuserorganisation/:username', async (req, res) => {
+  try {
+    const username = req.params.username;
+
+    console.log(`Fetching organisation for username: ${username}`); // Log the username received
+
+    // Find the user by username
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      console.log('User not found'); // Log if the user is not found
+      return res.status(404).send('User not found');
+    }
+
+    // Send the user's organisation name
+    console.log('User found:', user); // Log the found user
+    res.status(200).json({ organisationName: user.organisationName });
+  } catch (error) {
+    console.error('Error during getuser:', error);
+    res.status(500).send(error.message || 'Error during getuser');
+  }
+});
+
+
 router.delete('/deleteuser', async (req, res) => {
   try {
     const { username, rootUsername, password } = req.body;
