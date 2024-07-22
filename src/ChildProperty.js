@@ -98,5 +98,20 @@ router.post('/create-property', async (req, res) => {
     }
 });
 
+router.get('/child-property/:propertyName', async (req, res) => {
+  try {
+      const propertyName = req.params.propertyName; 
+      const childProperty = await ChildProperty.findOne({ ChildPropertyName: propertyName });
+
+      if (!childProperty) {
+        return res.status(404).json({ message: 'Property not found' });
+      }
+
+      res.status(200).json(childProperty);
+  } catch (error) {
+      console.error('Error fetching child property:', error);
+      res.status(500).json({ message: 'Error fetching child property' });
+  }
+});
 // Export the router
 module.exports = router;
