@@ -11,6 +11,7 @@ const downloadRoutes = require('./downloadRoute');
 const OrganisationRoute = require('./Organisation'); 
 const ChildPropertyRoute = require('./ChildProperty');  
 const uploadRoutes = require('./uploadRoutes');
+const bookingRoutes = require('./bookingRoute');  
 const mongoose = require('mongoose') ;
 const app = express();
 app.use(bodyParser.json());
@@ -29,7 +30,7 @@ app.use('/organisation' , OrganisationRoute);
 app.use('/parentproperty' , ParentRoute);
 app.use("/childproperty" , ChildPropertyRoute);
 app.use('/upload', uploadRoutes); // Use upload routes
-
+app.use('/slots' , bookingRoutes);
 require('dotenv').config({ path: path.join(__dirname, '../.env') });  
 
 // Set up AWS S3 configuration 
