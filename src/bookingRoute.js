@@ -48,6 +48,22 @@ router.get('/bookings/:username', async (req, res) => {
     res.status(500).json({ message: 'Failed to retrieve bookings', error: error.message });
   }
 });
+router.get('/bookings/organisation/:organisationName', async (req, res) => {
+  try {
+    const { organisationName } = req.params;
+
+    const bookings = await Booking.find({ organisationName });
+
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: 'No bookings found for this user' });
+    }
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error('Error retrieving bookings:', error);
+    res.status(500).json({ message: 'Failed to retrieve bookings', error: error.message });
+  }
+});
 router.put('/booking/:id', async (req, res) => {
   try {
     const { id } = req.params;
