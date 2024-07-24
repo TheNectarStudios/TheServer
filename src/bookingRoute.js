@@ -48,5 +48,44 @@ router.get('/bookings/:username', async (req, res) => {
     res.status(500).json({ message: 'Failed to retrieve bookings', error: error.message });
   }
 });
+router.put('/booking/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { propertyName, parentPropertyName, date, time, username, organisationName, status } = req.body;
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { propertyName, parentPropertyName, date, time, username, organisationName, status },
+      { new: true }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Booking updated', booking: updatedBooking });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ message: 'Failed to update booking', error: error.message });
+  }
+});
+
+// Delete booking
+router.delete('/booking/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedBooking = await Booking.findByIdAndDelete(id);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Booking deleted', booking: deletedBooking });
+  } catch (error) {
+    console.error('Error deleting booking:', error);
+    res.status(500).json({ message: 'Failed to delete booking', error: error.message });
+  }
+});
 
 module.exports = router;
