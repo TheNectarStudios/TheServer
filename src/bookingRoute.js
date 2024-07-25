@@ -86,6 +86,34 @@ router.put('/booking/:id', async (req, res) => {
   }
 });
 
+router.put('/booking/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required' });
+    }
+
+    // Update the booking status
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Booking status updated', booking: updatedBooking });
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    res.status(500).json({ message: 'Failed to update booking status', error: error.message });
+  }
+});
+
 // Delete booking
 router.delete('/booking/:id', async (req, res) => {
   try {
