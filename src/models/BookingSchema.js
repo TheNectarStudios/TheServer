@@ -33,6 +33,9 @@ const bookingSchema = new mongoose.Schema({
     type: String,  
     enum: ['confirmed', 'pending', 'cancelled'],  
     default: 'pending' 
+  }, 
+  RoomId :{
+    type: String,
   }
 });
 

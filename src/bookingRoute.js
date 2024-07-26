@@ -85,7 +85,6 @@ router.put('/booking/:id', async (req, res) => {
     res.status(500).json({ message: 'Failed to update booking', error: error.message });
   }
 });
-
 router.put('/booking/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
@@ -96,10 +95,18 @@ router.put('/booking/:id/status', async (req, res) => {
       return res.status(400).json({ message: 'Status is required' });
     }
 
-    // Update the booking status
+    let updateData = { status };
+
+    // If status is 'confirmed', generate a random RoomId
+    if (status === 'confirmed') {
+      const randomRoomId = Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit random number
+      updateData.RoomId = randomRoomId;
+    }
+
+    // Update the booking status and RoomId if necessary
     const updatedBooking = await Booking.findByIdAndUpdate(
       id,
-      { status },
+      updateData,
       { new: true } // Return the updated document
     );
 
