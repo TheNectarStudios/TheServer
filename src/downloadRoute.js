@@ -27,7 +27,7 @@ router.post('/fetch-objects', async (req, res) => {
   }
 
   const prefix = `${organisationName}/${parentPropertyName}/${childPropertyName}/`;
-  console.log(`Fetching objects wiprefix: ${prefix}`);
+  console.log(`Fetching objects with prefix: ${prefix}`);
 
   try {
     const params = {
@@ -53,10 +53,15 @@ router.post('/fetch-objects', async (req, res) => {
 
       // Create local directories if they don't exist
       const fullLocalPath = path.join(localPath, objectKey);
-      fs.mkdirSync(path.dirname(fullLocalPath), { recursive: true });
+      const directoryPath = path.dirname(fullLocalPath);
+      if (!fs.existsSync(directoryPath)) {
+        fs.mkdirSync(directoryPath, { recursive: true });
+      }
 
-      // Save the object locally
-      fs.writeFileSync(fullLocalPath, objectData.Body);
+      // Check if the object is not a directory and save the file
+      if (objectData.ContentLength > 0) {
+        fs.writeFileSync(fullLocalPath, objectData.Body);
+      }
 
       return fullLocalPath;
     });
