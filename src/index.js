@@ -12,36 +12,42 @@ const OrganisationRoute = require('./Organisation');
 const ChildPropertyRoute = require('./ChildProperty');  
 const uploadRoutes = require('./uploadRoutes');
 const bookingRoutes = require('./bookingRoute');  
-const mongoose = require('mongoose') ;
+const mongoose = require('mongoose');
+const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
 const app = express();
 app.use(bodyParser.json());
-app.use(cors()) ; 
-const mongoUri = process.env.MONGODB_URI; 
+app.use(cors());
+
+const mongoUri = process.env.MONGODB_URI;
 mongoose.connect(mongoUri, {
-  useNewUrlParser: true, 
+  useNewUrlParser: true,
   useUnifiedTopology: true,
   serverSelectionTimeoutMS: 30000,
 })
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
+
 const port = process.env.PORT || 3000;
 app.use('/download', downloadRoutes);
-app.use('/organisation' , OrganisationRoute);
-app.use('/parentproperty' , ParentRoute);
-app.use("/childproperty" , ChildPropertyRoute);
-app.use('/upload', uploadRoutes); // Use upload routes
-app.use('/slots' , bookingRoutes);
-require('dotenv').config({ path: path.join(__dirname, '../.env') });  
-
-// Set up AWS S3 configuration 
-AWS.config.update({ 
+app.use('/organisation', OrganisationRoute);
+app.use('/parentproperty', ParentRoute);
+app.use('/childproperty', ChildPropertyRoute);
+app.use('/upload', uploadRoutes);
+app.use('/slots', bookingRoutes);
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const AGORA_APP_ID = process.env.AGORA_APP_ID;
+const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
+ 
+// Set up AWS S3 configuration
+AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION,
-}); 
+});
 
-const s3 = new AWS.S3(); 
+const s3 = new AWS.S3();
 app.use('/user', userRoutes);
+
 // Configure Multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
@@ -54,18 +60,38 @@ app.use((err, req, res, next) => {
   res.status(500).send("An unexpected error occurred.");
 });
 
+
+app.post('/get-agora-token', (req, res) => {
+  const { user } = req.body;
+  const channelName = `video_call_${user}`;
+  const uid = 0; // UID can be set to 0 for the default setting
+  const role = RtcRole.PUBLISHER;
+
+  const expirationTimeInSeconds = 3600;
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+  const token = RtcTokenBuilder.buildTokenWithUid(
+    AGORA_APP_ID,
+    AGORA_APP_CERTIFICATE,
+    channelName,
+    uid,
+    role,
+    privilegeExpiredTs
+  );
+  res.json({ channel: channelName, token });
+});
+
 // Route to handle multiple file uploads (existing functionality)
 app.post('/upload', upload.fields([{ name: 'model' }, { name: 'texture' }]), (req, res) => {
-  const { directoryPath, organisationName , parentpropertyName , childPropertyName } = req.body;
-  // console.log(`Directory Path: ${directoryPath}, Username: ${}, Property Name: ${parentpropertyName}`);
+  const { directoryPath, organisationName, parentpropertyName, childPropertyName } = req.body;
   console.log(`Directory Path: ${directoryPath}, Organisation Name: ${organisationName}, Parent Property Name: ${parentpropertyName}, Child Property Name: ${childPropertyName}`);
 
-  if (!directoryPath || !organisationName || !parentpropertyName) {
+  if (!directoryPath || !organisationName || !parentpropertyName) { 
     return res.status(400).send("Required information not provided.");
   }
- 
- 
-    const folderName = `${organisationName}/${parentpropertyName}/${childPropertyName}/model`;
+
+  const folderName = `${organisationName}/${parentpropertyName}/${childPropertyName}/model`;
 
   const uploadPromises = [];
 
@@ -120,10 +146,9 @@ app.post('/upload', upload.fields([{ name: 'model' }, { name: 'texture' }]), (re
 // Route to handle single image upload from Unity application
 app.post('/upload-image', upload.single('file'), (req, res) => {
   console.log("Received request to upload image.");
-  let { organisationName, parentPropertyName, childPropertyName  } = req.body;
-  // console.log(`Username: ${organisationName}, Property Name: ${parentPropertyName}, Folder Name: ${childPropetyName}`);
+  let { organisationName, parentPropertyName, childPropertyName } = req.body;
 
-  if (!organisationName || !parentPropertyName || !childPropertyName ) {
+  if (!organisationName || !parentPropertyName || !childPropertyName) {
     return res.status(400).send("Required information not provided.");
   }
 
@@ -148,9 +173,10 @@ app.post('/upload-image', upload.single('file'), (req, res) => {
     res.status(200).send(`File uploaded successfully to S3: ${data.Location}`);
   });
 });
+
 app.post('/upload-image-panaroma', upload.single('file'), (req, res) => {
   console.log("Received request to upload image.");
-  let { organisationName, parentPropertyName, childPropertyName  } = req.body;
+  let { organisationName, parentPropertyName, childPropertyName } = req.body;
   console.log(`Organisation Name: ${organisationName}, Parent Property Name: ${parentPropertyName}, Child Property Name: ${childPropertyName}`);
 
   if (!organisationName || !parentPropertyName || !childPropertyName) {
@@ -180,14 +206,12 @@ app.post('/upload-image-panaroma', upload.single('file'), (req, res) => {
   });
 });
 
-
 // Route to handle saving scene data (positions and rotations)
 app.post('/save-positions-rotations', (req, res) => {
   let { organisationName, parentPropertyName, childPropertyName, hotspots } = req.body; 
 
   console.log(`Request Body: ${JSON.stringify(req.body)}`);
-  // console.log(`Username: ${username}, Property Name: ${propertyName}`); 
- 
+
   if (typeof hotspots === 'string') {
     try {
       hotspots = JSON.parse(hotspots);
@@ -277,9 +301,8 @@ app.post('/download-folder', (req, res) => {
         res.status(500).send("Error downloading files from S3.");
       });
   });
-}); 
+});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
- 
