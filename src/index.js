@@ -6,53 +6,59 @@ const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
 const userRoutes = require('./userRoutes');
-const ParentRoute = require('./ParentProperty'); 
+const ParentRoute = require('./ParentProperty');
 const downloadRoutes = require('./downloadRoute');
-const OrganisationRoute = require('./Organisation'); 
-const ChildPropertyRoute = require('./ChildProperty');  
+const OrganisationRoute = require('./Organisation');
+const ChildPropertyRoute = require('./ChildProperty');
 const uploadRoutes = require('./uploadRoutes');
-const bookingRoutes = require('./bookingRoute');  
+const bookingRoutes = require('./bookingRoute');
 const mongoose = require('mongoose');
 const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
-const app = express();
-app.use(bodyParser.json());
-app.use(cors());
 
+const app = express();
+
+// Middleware setup
+app.use(bodyParser.json());
+app.use(cors({
+  origin: '*', // Adjust according to your needs
+  methods: 'GET,POST,PUT,DELETE,OPTIONS',
+  allowedHeaders: 'Content-Type,Authorization'
+}));
+
+// MongoDB connection
 const mongoUri = process.env.MONGODB_URI;
 mongoose.connect(mongoUri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+  useNewUrlParser: true, // Deprecated, no effect in v4+
+  useUnifiedTopology: true, // Deprecated, no effect in v4+
   serverSelectionTimeoutMS: 30000,
 })
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
 
-const port = process.env.PORT || 3000;
+// AWS S3 configuration
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+});
+const s3 = new AWS.S3();
+
+// Agora configuration
+const AGORA_APP_ID = process.env.AGORA_APP_ID;
+const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
+
+// Multer configuration
+const storage = multer.memoryStorage(); // Store files in memory
+const upload = multer({ storage: storage });
+
+// Routes
 app.use('/download', downloadRoutes);
 app.use('/organisation', OrganisationRoute);
 app.use('/parentproperty', ParentRoute);
 app.use('/childproperty', ChildPropertyRoute);
 app.use('/upload', uploadRoutes);
 app.use('/slots', bookingRoutes);
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
-const AGORA_APP_ID = process.env.AGORA_APP_ID;
-const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
- 
-// Set up AWS S3 configuration
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
-});
-
-const s3 = new AWS.S3();
 app.use('/user', userRoutes);
-
-// Configure Multer for file uploads
-const upload = multer({ dest: 'uploads/' });
-
-// Middleware to parse JSON bodies
-app.use(bodyParser.urlencoded({ extended: true }));
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -60,7 +66,7 @@ app.use((err, req, res, next) => {
   res.status(500).send("An unexpected error occurred.");
 });
 
-
+// Agora token generation
 app.post('/get-agora-token', (req, res) => {
   const { user } = req.body;
   const channelName = `video_call_${user}`;
@@ -82,85 +88,58 @@ app.post('/get-agora-token', (req, res) => {
   res.json({ channel: channelName, token });
 });
 
-// Route to handle multiple file uploads (existing functionality)
-app.post('/upload', upload.fields([{ name: 'model' }, { name: 'texture' }]), (req, res) => {
-  const { directoryPath, organisationName, parentpropertyName, childPropertyName } = req.body;
-  console.log(`Directory Path: ${directoryPath}, Organisation Name: ${organisationName}, Parent Property Name: ${parentpropertyName}, Child Property Name: ${childPropertyName}`);
+// Handle multiple file uploads
+app.post('/upload', upload.any(), (req, res) => {
+  const { organisationName, parentpropertyName, childPropertyName } = req.body;
 
-  if (!directoryPath || !organisationName || !parentpropertyName) { 
-    return res.status(400).send("Required information not provided.");
+  if (!organisationName || !parentpropertyName || !req.files || req.files.length === 0) {
+    return res.status(400).send("Required information or files not provided.");
   }
 
   const folderName = `${organisationName}/${parentpropertyName}/${childPropertyName}/model`;
 
-  const uploadPromises = [];
-
-  // Read the directory and upload files to S3
-  fs.readdir(directoryPath, (err, files) => {
-    if (err) {
-      console.error("Error reading directory:", err);
-      return res.status(500).send("Error reading directory.");
+  const uploadPromises = req.files.map(file => {
+    if (!file.buffer) {
+      return Promise.reject(new Error('File buffer is missing.'));
     }
 
-    files.forEach(file => {
-      const filePath = path.join(directoryPath, file);
-      const isFile = fs.statSync(filePath).isFile(); // Check if it's a file
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `${folderName}/${file.originalname}`,
+      Body: file.buffer,
+      ContentType: file.mimetype
+    };
 
-      if (!isFile) {
-        console.warn(`Skipping ${filePath} because it's not a file.`);
-        return; // Skip directories
-      }
-
-      const fileContent = fs.readFileSync(filePath);
-
-      const params = {
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: `${folderName}/${file}`,
-        Body: fileContent,
-      };
-
-      // Using promises for each S3 upload
-      uploadPromises.push(
-        s3.upload(params).promise().then(data => {
-          console.log(`Uploaded ${file} to S3.`);
-          return data.Location; // Return S3 object URL
-        }).catch(err => {
-          console.error(`Error uploading ${file} to S3:`, err);
-          throw err;
-        })
-      );
-    });
-
-    // Wait for all uploads to complete
-    Promise.all(uploadPromises)
-      .then(locations => {
-        res.status(200).send(`Files uploaded successfully. ${locations.join(', ')}`);
-      })
+    return s3.upload(params).promise()
+      .then(data => data.Location)
       .catch(err => {
-        console.error("Error uploading files:", err);
-        res.status(500).send("Error uploading files");
+        console.error(`Error uploading ${file.originalname} to S3:`, err);
+        throw err;
       });
   });
+
+  Promise.all(uploadPromises)
+    .then(locations => res.status(200).send(`Files uploaded successfully. ${locations.join(', ')}`))
+    .catch(err => {
+      console.error("Error uploading files:", err);
+      res.status(500).send("Error uploading files");
+    });
 });
 
-// Route to handle single image upload from Unity application
+// Handle single image upload
 app.post('/upload-image', upload.single('file'), (req, res) => {
-  console.log("Received request to upload image.");
-  let { organisationName, parentPropertyName, childPropertyName } = req.body;
+  const { organisationName, parentPropertyName, childPropertyName } = req.body;
 
-  if (!organisationName || !parentPropertyName || !childPropertyName) {
-    return res.status(400).send("Required information not provided.");
+  if (!organisationName || !parentPropertyName || !childPropertyName || !req.file) {
+    return res.status(400).send("Required information or file not provided.");
   }
 
   const file = req.file;
-  if (!file) {
-    return res.status(400).send("No file uploaded.");
-  }
-
   const params = {
     Bucket: process.env.S3_BUCKET_NAME,
     Key: `models/${organisationName}/${parentPropertyName}/${childPropertyName}/thumbnails/${file.originalname}`,
-    Body: fs.createReadStream(file.path),
+    Body: file.buffer,
+    ContentType: file.mimetype
   };
 
   s3.upload(params, (err, data) => {
@@ -169,29 +148,24 @@ app.post('/upload-image', upload.single('file'), (req, res) => {
       return res.status(500).send("Error uploading file to S3.");
     }
 
-    console.log(`File uploaded successfully to S3: ${data.Location}`);
     res.status(200).send(`File uploaded successfully to S3: ${data.Location}`);
   });
 });
 
+// Handle panorama image upload
 app.post('/upload-image-panaroma', upload.single('file'), (req, res) => {
-  console.log("Received request to upload image.");
-  let { organisationName, parentPropertyName, childPropertyName } = req.body;
-  console.log(`Organisation Name: ${organisationName}, Parent Property Name: ${parentPropertyName}, Child Property Name: ${childPropertyName}`);
+  const { organisationName, parentPropertyName, childPropertyName } = req.body;
 
-  if (!organisationName || !parentPropertyName || !childPropertyName) {
-    return res.status(400).send("Required information not provided.");
+  if (!organisationName || !parentPropertyName || !childPropertyName || !req.file) {
+    return res.status(400).send("Required information or file not provided.");
   }
 
   const file = req.file;
-  if (!file) {
-    return res.status(400).send("No file uploaded.");
-  }
-
   const params = {
     Bucket: process.env.S3_BUCKET_NAME,
     Key: `${organisationName}/${parentPropertyName}/${childPropertyName}/PanaromaImages/${file.originalname}`,
-    Body: fs.createReadStream(file.path),
+    Body: file.buffer,
+    ContentType: file.mimetype
   };
 
   s3.upload(params, (err, data) => {
@@ -200,25 +174,16 @@ app.post('/upload-image-panaroma', upload.single('file'), (req, res) => {
       return res.status(500).send("Error uploading file to S3.");
     }
 
-    console.log(`File uploaded successfully to S3: ${data.Location}`);
-    fs.unlinkSync(req.file.path); // Delete the file from the local storage after uploading
     res.status(200).send(`File uploaded successfully to S3: ${data.Location}`);
   });
 });
 
-// Route to handle saving scene data (positions and rotations)
+// Save scene data
 app.post('/save-positions-rotations', (req, res) => {
-  let { organisationName, parentPropertyName, childPropertyName, hotspots } = req.body; 
+  const { organisationName, parentPropertyName, childPropertyName, hotspots } = req.body;
 
-  console.log(`Request Body: ${JSON.stringify(req.body)}`);
-
-  if (typeof hotspots === 'string') {
-    try {
-      hotspots = JSON.parse(hotspots);
-    } catch (err) {
-      console.error("Error parsing hotspots JSON:", err);
-      return res.status(400).send("Invalid hotspots JSON format.");
-    }
+  if (!organisationName || !parentPropertyName || !childPropertyName || !hotspots) {
+    return res.status(400).send("Required information not provided.");
   }
 
   const folderName = `${organisationName}/${parentPropertyName}/${childPropertyName}`;
@@ -238,12 +203,11 @@ app.post('/save-positions-rotations', (req, res) => {
       return res.status(500).send("Error uploading JSON to S3.");
     }
 
-    console.log(`JSON uploaded successfully to S3: ${data.Location}`);
     res.status(200).send(`JSON uploaded successfully to S3: ${data.Location}`);
   });
 });
 
-// Route to handle downloading a folder from S3
+// Download a folder from S3
 app.post('/download-folder', (req, res) => {
   const { username, propertyName } = req.body;
 
@@ -293,9 +257,7 @@ app.post('/download-folder', (req, res) => {
     });
 
     Promise.all(downloadPromises)
-      .then(() => {
-        res.status(200).send(`Folder downloaded successfully to ${localFolderPath}`);
-      })
+      .then(() => res.status(200).send(`Folder downloaded successfully to ${localFolderPath}`))
       .catch(err => {
         console.error("Error downloading files from S3:", err);
         res.status(500).send("Error downloading files from S3.");
@@ -303,6 +265,8 @@ app.post('/download-folder', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
