@@ -179,7 +179,7 @@ app.post('/upload-image-panaroma', upload.single('file'), (req, res) => {
 });
 
 // Save scene data
-app.post('/save-positions-rotations', (req, res) => {
+app.post('/save-positions-rotations', upload.none(), (req, res) => {
   const { organisationName, parentPropertyName, childPropertyName, hotspots } = req.body;
 
   if (!organisationName || !parentPropertyName || !childPropertyName || !hotspots) {
@@ -208,7 +208,7 @@ app.post('/save-positions-rotations', (req, res) => {
 });
 
 // Download a folder from S3
-app.post('/download-folder', (req, res) => {
+app.post('/download-folder', upload.none(), (req, res) => {
   const { username, propertyName } = req.body;
 
   if (!username || !propertyName) {
