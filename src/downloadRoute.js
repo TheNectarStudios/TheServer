@@ -21,8 +21,11 @@ const s3 = new AWS.S3();
 
 router.post('/fetch-objects', async (req, res) => {
   const { organisationName, parentPropertyName, childPropertyName, localPath } = req.body;
+  console.log("Received request to fetch objects.");
 
+  // Validate input
   if (!organisationName || !parentPropertyName || !childPropertyName || !localPath) {
+    console.error("Required information not provided.");
     return res.status(400).send("Required information not provided.");
   }
 
@@ -36,12 +39,16 @@ router.post('/fetch-objects', async (req, res) => {
     };
 
     // List objects with the specified prefix
+    console.log("Listing objects with specified prefix...");
     const listedObjects = await s3.listObjectsV2(params).promise();
+    console.log(`Listed objects: ${listedObjects.Contents.length} found`);
+
     if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
       console.log("No objects found with the specified prefix.");
       return res.status(404).send("No objects found with the specified prefix.");
     }
 
+    // Download each object
     const downloadPromises = listedObjects.Contents.map(async object => {
       const objectKey = object.Key;
       const objectParams = { Bucket: process.env.S3_BUCKET_NAME, Key: objectKey };
@@ -55,17 +62,23 @@ router.post('/fetch-objects', async (req, res) => {
       const fullLocalPath = path.join(localPath, objectKey);
       const directoryPath = path.dirname(fullLocalPath);
       if (!fs.existsSync(directoryPath)) {
+        console.log(`Creating directory: ${directoryPath}`);
         fs.mkdirSync(directoryPath, { recursive: true });
       }
 
       // Check if the object is not a directory and save the file
       if (objectData.ContentLength > 0) {
+        console.log(`Saving file to: ${fullLocalPath}`);
         fs.writeFileSync(fullLocalPath, objectData.Body);
+      } else {
+        console.log(`Skipping directory object: ${objectKey}`);
       }
 
       return fullLocalPath;
     });
 
+    // Wait for all downloads to complete
+    console.log("Waiting for all downloads to complete...");
     const downloadedFiles = await Promise.all(downloadPromises);
     console.log(`Downloaded files: ${downloadedFiles}`);
 
