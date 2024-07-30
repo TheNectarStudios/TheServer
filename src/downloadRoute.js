@@ -1,6 +1,6 @@
 const express = require('express');
 const AWS = require('aws-sdk');
-const fs = require('fs');
+const multer = require('multer');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
@@ -18,10 +18,12 @@ AWS.config.update({
 });
 
 const s3 = new AWS.S3();
+const upload = multer(); // Use memory storage for multer
 
-router.post('/fetch-objects', async (req, res) => {
-  const { organisationName, parentPropertyName, childPropertyName, localPath } = req.body;
+router.post('/fetch-objects', upload.single('file'), async (req, res) => {
   console.log("Received request to fetch objects.");
+
+  const { organisationName, parentPropertyName, childPropertyName, localPath } = req.body;
 
   // Validate input
   if (!organisationName || !parentPropertyName || !childPropertyName || !localPath) {
@@ -58,29 +60,17 @@ router.post('/fetch-objects', async (req, res) => {
       const objectData = await s3.getObject(objectParams).promise();
       console.log(`Downloaded object: ${objectKey}`);
 
-      // Create local directories if they don't exist
-      const fullLocalPath = path.join(localPath, objectKey);
-      const directoryPath = path.dirname(fullLocalPath);
-      if (!fs.existsSync(directoryPath)) {
-        console.log(`Creating directory: ${directoryPath}`);
-        fs.mkdirSync(directoryPath, { recursive: true });
-      }
-
-      // Check if the object is not a directory and save the file
-      if (objectData.ContentLength > 0) {
-        console.log(`Saving file to: ${fullLocalPath}`);
-        fs.writeFileSync(fullLocalPath, objectData.Body);
-      } else {
-        console.log(`Skipping directory object: ${objectKey}`);
-      }
-
-      return fullLocalPath;
+      // Return the object key and data (as Buffer) in response
+      return {
+        key: objectKey,
+        data: objectData.Body.toString('base64'), // Convert to base64 if you need to send it as a string
+      };
     });
 
     // Wait for all downloads to complete
     console.log("Waiting for all downloads to complete...");
     const downloadedFiles = await Promise.all(downloadPromises);
-    console.log(`Downloaded files: ${downloadedFiles}`);
+    console.log(`Downloaded files: ${downloadedFiles.length}`);
 
     res.status(200).json({ message: 'Files downloaded successfully', files: downloadedFiles });
   } catch (error) {
