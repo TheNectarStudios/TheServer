@@ -105,7 +105,7 @@ AWS.config.update({
 const s3 = new AWS.S3();
 const upload = multer(); // Use memory storage for multer
 
-router.post('/fetch-objects', upload.none(), async (req, res) => {
+router.post('/fetch-objects', upload.single('file'), async (req, res) => {
   console.log("Received request to fetch objects.");
 
   const { organisationName, parentPropertyName, childPropertyName, localPath } = req.body;
@@ -135,16 +135,91 @@ router.post('/fetch-objects', upload.none(), async (req, res) => {
       return res.status(404).send("No objects found with the specified prefix.");
     }
 
-    // Generate pre-signed URLs for each object
-    const urlExpiry = 60 * 5; // URLs valid for 5 minutes
-    const fileUrls = listedObjects.Contents.map(object => {
-      const objectParams = { Bucket: process.env.S3_BUCKET_NAME, Key: object.Key, Expires: urlExpiry };
-      const url = s3.getSignedUrl('getObject', objectParams);
-      return { fileName: path.basename(object.Key), url };
+    // Helper function to create directories recursively
+    const createDirectories = (filePath) => {
+      const dirPath = path.dirname(filePath);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+    };
+
+    // Download each object and save to the local path with directory structure
+    const downloadPromises = listedObjects.Contents.map(async object => {
+      const objectKey = object.Key;
+      const objectParams = { Bucket: process.env.S3_BUCKET_NAME, Key: objectKey };
+
+      console.log(`Downloading object: ${objectKey}`);
+      let objectStream;
+      try {
+        objectStream = s3.getObject(objectParams).createReadStream();
+        console.log(`Downloaded object: ${objectKey}`);
+      } catch (downloadErr) {
+        console.error(`Error downloading object ${objectKey}: ${downloadErr}`);
+        return {
+          key: objectKey,
+          error: `Error downloading object: ${downloadErr.message}`,
+        };
+      }
+
+      // Determine if the objectKey represents a directory or file
+      const isDirectory = objectKey.endsWith('/');
+      const localFilePath = path.join(localPath, objectKey);
+
+      if (isDirectory) {
+        // Skip writing for directories
+        console.log(`Skipping directory creation for: ${localFilePath}`);
+        return {
+          key: objectKey,
+          localPath: localFilePath,
+        };
+      }
+
+      // Ensure the directory exists before writing the file
+      try {
+        createDirectories(localFilePath);
+      } catch (dirErr) {
+        console.error(`Error creating directory ${localFilePath}: ${dirErr}`);
+        return {
+          key: objectKey,
+          error: `Error creating directory: ${dirErr.message}`,
+        };
+      }
+
+      // Write the file to the local path
+      try {
+        const fileStream = fs.createWriteStream(localFilePath);
+        await new Promise((resolve, reject) => {
+          objectStream.pipe(fileStream);
+          fileStream.on('finish', resolve);
+          fileStream.on('error', reject);
+        });
+        console.log(`Saved object to: ${localFilePath}`);
+      } catch (writeErr) {
+        console.error(`Error writing file ${localFilePath}: ${writeErr}`);
+        return {
+          key: objectKey,
+          error: `Error writing file: ${writeErr.message}`,
+        };
+      }
+
+      return {
+        key: objectKey,
+        localPath: localFilePath,
+      };
     });
 
-    console.log("Generated pre-signed URLs for files.");
-    res.status(200).json({ files: fileUrls });
+    // Wait for all downloads to complete
+    console.log("Waiting for all downloads to complete...");
+    const downloadedFiles = await Promise.all(downloadPromises);
+
+    const errors = downloadedFiles.filter(file => file.error);
+    if (errors.length > 0) {
+      console.error("Errors occurred during download:", errors);
+      return res.status(500).json({ message: 'Errors occurred during download', errors });
+    }
+
+    console.log(`Downloaded files: ${downloadedFiles.length}`);
+    res.status(200).json({ message: 'Files downloaded successfully', files: downloadedFiles });
   } catch (error) {
     console.error("Unexpected error:", error);
     res.status(500).send("Unexpected error.");
