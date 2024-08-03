@@ -1,44 +1,24 @@
+// models/Booking.js
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const bookingSchema = new mongoose.Schema({
-  propertyName: { 
-    type: String, 
-    required: true,
-  },
-  parentPropertyName: {
+const BookingSchema = new Schema({
+  username: {
     type: String,
     required: true,
   },
-  date: { 
-    type: Date, 
-    required: true 
+  watchlist: {
+    type: Array,
+    required: true,
   },
-  time: {
+  key: {
     type: String,
     required: true,
   },
-  username: { 
-    type: String, 
-    required: true 
+  date: {
+    type: Date,
+    default: Date.now,
   },
-  organisationName: {
-    type: String,
-    required: true,
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-  status: { 
-    type: String,  
-    enum: ['confirmed', 'pending', 'cancelled'],  
-    default: 'pending' 
-  }, 
-  RoomId :{
-    type: String,
-  }
 });
 
-const Booking = mongoose.model('Booking', bookingSchema);
-
-module.exports = Booking;
+module.exports = mongoose.model('Booking', BookingSchema);
