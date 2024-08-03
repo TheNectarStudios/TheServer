@@ -1,141 +1,25 @@
+// server.js or your routes file
 const express = require('express');
-const Booking = require('./models/BookingSchema');
 const router = express.Router();
+const Booking = require('./models/BookingSchema'); // Assuming you have a Booking model
+const generateUniqueKey = require('./utils/generateKey'); // Import the utility function
 
-router.post('/booking', async (req, res) => {
+// POST /api/bookings
+router.post('/bookings', async (req, res) => {
   try {
-    const { propertyName, parentPropertyName, date, time, username, organisationName } = req.body;
-
-    console.log('Received booking request:', req.body);
-
-    // Validate required fields
-    if (!propertyName || !parentPropertyName || !date || !time || !username || !organisationName) {
-      console.log('Missing required fields');
-      return res.status(400).json({ message: 'Missing required fields' });
-    } 
-
-    // Check for existing booking
-    const existingBooking = await Booking.findOne({ propertyName, parentPropertyName, date, time, username, organisationName });
-    if (existingBooking) {
-      console.log('Booking already exists:', existingBooking);
-      return res.status(409).json({ message: 'Booking already exists' });
-    }
-
-    // Create a new booking instance
-    const booking = new Booking({ propertyName, parentPropertyName, date, time, username, organisationName, status: 'confirmed' });
-    await booking.save();
-    
-    console.log('Booking confirmed:', booking);
-    res.status(200).json({ message: 'Booking confirmed', booking });
+    const { username, watchlist } = req.body;
+    const key = await generateUniqueKey(); // Generate a unique key
+    const newBooking = new Booking({
+      username,
+      watchlist,
+      key,
+      date: new Date(),
+    });
+    await newBooking.save();
+    res.status(201).json({ message: 'Booking successful', booking: newBooking });
   } catch (error) {
-    console.error('Error booking property:', error);
-    res.status(500).json({ message: 'Failed to book property', error: error.message });
-  }
-});
-router.get('/bookings/:username', async (req, res) => {
-  try {
-    const { username } = req.params;
-
-    const bookings = await Booking.find({ username });
-
-    if (!bookings || bookings.length === 0) {
-      return res.status(404).json({ message: 'No bookings found for this user' });
-    }
-
-    res.status(200).json(bookings);
-  } catch (error) {
-    console.error('Error retrieving bookings:', error);
-    res.status(500).json({ message: 'Failed to retrieve bookings', error: error.message });
-  }
-});
-router.get('/bookings/organisation/:organisationName', async (req, res) => {
-  try {
-    const { organisationName } = req.params;
-
-    const bookings = await Booking.find({ organisationName });
-
-    if (!bookings || bookings.length === 0) {
-      return res.status(404).json({ message: 'No bookings found for this user' });
-    }
-
-    res.status(200).json(bookings);
-  } catch (error) {
-    console.error('Error retrieving bookings:', error);
-    res.status(500).json({ message: 'Failed to retrieve bookings', error: error.message });
-  }
-});
-router.put('/booking/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { propertyName, parentPropertyName, date, time, username, organisationName, status } = req.body;
-
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      id,
-      { propertyName, parentPropertyName, date, time, username, organisationName, status },
-      { new: true }
-    );
-
-    if (!updatedBooking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    res.status(200).json({ message: 'Booking updated', booking: updatedBooking });
-  } catch (error) {
-    console.error('Error updating booking:', error);
-    res.status(500).json({ message: 'Failed to update booking', error: error.message });
-  }
-});
-router.put('/booking/:id/status', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    // Validate status
-    if (!status) {
-      return res.status(400).json({ message: 'Status is required' });
-    }
-
-    let updateData = { status };
-
-    // If status is 'confirmed', generate a random RoomId
-    if (status === 'confirmed') {
-      const randomRoomId = Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit random number
-      updateData.RoomId = randomRoomId;
-    }
-
-    // Update the booking status and RoomId if necessary
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true } // Return the updated document
-    );
-
-    if (!updatedBooking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    res.status(200).json({ message: 'Booking status updated', booking: updatedBooking });
-  } catch (error) {
-    console.error('Error updating booking status:', error);
-    res.status(500).json({ message: 'Failed to update booking status', error: error.message });
-  }
-});
-
-// Delete booking
-router.delete('/booking/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const deletedBooking = await Booking.findByIdAndDelete(id);
-
-    if (!deletedBooking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    res.status(200).json({ message: 'Booking deleted', booking: deletedBooking });
-  } catch (error) {
-    console.error('Error deleting booking:', error);
-    res.status(500).json({ message: 'Failed to delete booking', error: error.message });
+    console.error('Error saving booking:', error);
+    res.status(500).json({ message: 'Failed to book', error });
   }
 });
 

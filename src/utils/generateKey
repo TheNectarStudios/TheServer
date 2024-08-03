@@ -1,0 +1,23 @@
+// utils/generateKey.js
+const Booking = require('../models/BookingSchema'); // Assuming you have a Booking model
+
+const generateRandomKey = () => {
+  return Math.random().toString(36).substr(2, 6).toUpperCase();
+};
+
+const generateUniqueKey = async () => {
+  let key; 
+  let keyExists = true;
+
+  while (keyExists) {
+    key = generateRandomKey();
+    const existingBooking = await Booking.findOne({ key });
+    if (!existingBooking) {
+      keyExists = false;
+    }
+  }
+ 
+  return key;
+};
+
+module.exports = generateUniqueKey;

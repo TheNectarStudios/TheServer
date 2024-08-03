@@ -204,7 +204,7 @@ app.post('/save-positions-rotations', upload.none(), (req, res) => {
     }
 
     res.status(200).send(`JSON uploaded successfully to S3: ${data.Location}`);
-  });
+  }); 
 });
 
 // Download a folder from S3

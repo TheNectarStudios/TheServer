@@ -24,7 +24,7 @@ router.post('/fetch-objects', upload.single('file'), async (req, res) => {
   console.log("Received request to fetch objects.");
 
   const { organisationName, parentPropertyName, childPropertyName, localPath } = req.body;
-
+  console.log(organisationName, parentPropertyName, childPropertyName, localPath); 
   // Validate input
   if (!organisationName || !parentPropertyName || !childPropertyName || !localPath) {
     console.error("Required information not provided.");
