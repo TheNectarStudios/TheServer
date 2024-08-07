@@ -13,7 +13,6 @@ const ChildPropertyRoute = require('./ChildProperty');
 const uploadRoutes = require('./uploadRoutes');
 const bookingRoutes = require('./bookingRoute');
 const mongoose = require('mongoose');
-const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
 
 const app = express();
 
@@ -43,9 +42,7 @@ AWS.config.update({
 });
 const s3 = new AWS.S3();
 
-// Agora configuration
-const AGORA_APP_ID = process.env.AGORA_APP_ID;
-const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
+
 
 // Multer configuration
 const storage = multer.memoryStorage(); // Store files in memory
@@ -65,29 +62,6 @@ app.use((err, req, res, next) => {
   console.error("Global error handler:", err);
   res.status(500).send("An unexpected error occurred.");
 });
-
-// Agora token generation
-app.post('/get-agora-token', (req, res) => {
-  const { user } = req.body;
-  const channelName = `video_call_${user}`;
-  const uid = 0; // UID can be set to 0 for the default setting
-  const role = RtcRole.PUBLISHER;
-
-  const expirationTimeInSeconds = 3600;
-  const currentTimestamp = Math.floor(Date.now() / 1000);
-  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
-
-  const token = RtcTokenBuilder.buildTokenWithUid(
-    AGORA_APP_ID,
-    AGORA_APP_CERTIFICATE,
-    channelName,
-    uid,
-    role,
-    privilegeExpiredTs
-  );
-  res.json({ channel: channelName, token });
-});
-
 // Handle multiple file uploads
 app.post('/upload', upload.any(), (req, res) => {
   const { organisationName, parentpropertyName, childPropertyName } = req.body;
