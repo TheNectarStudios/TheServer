@@ -1,6 +1,6 @@
-## Note 
-- If you are changing the deployed url of the server you have to change the api endpoint in all the Three apps ( Creator, VRAPP and User App ) 
+## ⚠️ Important Note
 
+**If you are changing the deployed URL of the server, you have to change the API endpoint in all three apps (Creator, VRAPP, and User App).**
 
 # Node.js Server Documentation
 
