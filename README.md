@@ -1,3 +1,7 @@
+## Note 
+- If you are changing the deployed url of the server you have to change the api endpoint in all the Three apps ( Creator, VRAPP and User App ) 
+
+
 # Node.js Server Documentation
 
 This documentation provides detailed instructions for setting up, configuring, and deploying your Node.js server. This server connects to MongoDB, AWS S3, and Twilio, and includes routes for various functionalities.
