@@ -58,23 +58,51 @@ router.get('/bookings/key/:key', async (req, res) => {
   }
 });
 
-router.get('/watchlist/:organisationName', async (req, res) => {
-  try {
-    const { organisationName } = req.params;
-    const watchlistData = await Booking.find({ "watchlist.organisationName": organisationName });
 
-    if (watchlistData.length === 0) {
-      return res.status(404).json({ message: 'No watchlist items found for this organisation' });
+// PUT /api/slots/bookings/approve/:key/:propertyName/:parentPropertyName
+router.put('/bookings/approve/:key/:propertyName/:parentPropertyName', async (req, res) => {
+  try {
+    const { key, propertyName, parentPropertyName } = req.params;
+    const { approvalStatus } = req.body;
+
+    // Validate input
+    if (!approvalStatus) {
+      return res.status(400).json({ message: 'Approval status is required' });
     }
 
-    // Extract the watchlist from the results
-    const watchlist = watchlistData.map(item => item.watchlist).flat();
+    // Find the booking by its unique key
+    const booking = await Booking.findOne({ key });
+    if (!booking) {
+      return res.status(404).json({ message: 'No booking found with this key' });
+    }
 
-    res.status(200).json({ watchlist });
+    // Find and update the slot in the watchlist
+    let slotUpdated = false;
+    const updatedWatchlist = booking.watchlist.map(slot => {
+      if (slot.propertyName === propertyName && slot.parentPropertyName === parentPropertyName) {
+        slotUpdated = true;
+        return { ...slot, ApprovalStatus: approvalStatus };
+      }
+      return slot;
+    });
+
+    if (!slotUpdated) {
+      return res.status(404).json({ message: 'No slot found to update' });
+    }
+
+    // Save the updated booking
+    booking.watchlist = updatedWatchlist;
+    await booking.save();
+
+    res.status(200).json({ message: 'Slot approval status updated', booking });
   } catch (error) {
-    console.error('Error fetching watchlist:', error);
-    res.status(500).json({ message: 'Failed to fetch watchlist', error });
+    console.error('Error updating slot approval status:', error);
+    res.status(500).json({ message: 'Failed to update slot approval status', error });
   }
 });
+
+module.exports = router;
+
+
 
 module.exports = router;
