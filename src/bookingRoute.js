@@ -58,25 +58,21 @@ router.get('/bookings/key/:key', async (req, res) => {
   }
 });
 
-router.get('/watchlist/organisation/:organizationName', async (req, res) => {
+router.get('/watchlist/:organisationName', async (req, res) => {
   try {
-    const { organizationName } = req.params;
-    console.log('Received organizationName:', organizationName); // Debug
+    const { organisationName } = req.params;
+    const watchlistData = await Booking.find({ "watchlist.organisationName": organisationName });
 
-    // Query to find all documents where the organizationName matches, and return only the watchlist field
-    const bookings = await Booking.find({ organizationName }, 'watchlist');
-    console.log('Bookings found:', bookings); // Debug
-
-    if (bookings.length === 0) {
-      console.log('No watchlist found for this organization'); // Debug
-      return res.status(404).json({ message: 'No watchlist found for this organization' });
+    if (watchlistData.length === 0) {
+      return res.status(404).json({ message: 'No watchlist items found for this organisation' });
     }
 
-    // Extract watchlist arrays from each document and combine them
-    const combinedWatchlist = bookings.reduce((acc, booking) => acc.concat(booking.watchlist), []);
-    res.status(200).json({ watchlist: combinedWatchlist });
+    // Extract the watchlist from the results
+    const watchlist = watchlistData.map(item => item.watchlist).flat();
+
+    res.status(200).json({ watchlist });
   } catch (error) {
-    console.error('Error fetching watchlist by organization name:', error);
+    console.error('Error fetching watchlist:', error);
     res.status(500).json({ message: 'Failed to fetch watchlist', error });
   }
 });
