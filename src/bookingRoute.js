@@ -58,21 +58,22 @@ router.get('/bookings/key/:key', async (req, res) => {
   }
 });
 
-router.get('/bookings/organisation/:organizationName', async (req, res) => {
+router.get('/watchlist/:organisationName', async (req, res) => {
   try {
-    const { organizationName } = req.params;
+    const { organisationName } = req.params;
+    const watchlistData = await Booking.find({ "watchlist.organisationName": organisationName });
 
-    // Assuming you store organizationName in the Booking model
-    const bookings = await Booking.find({ organizationName });
-
-    if (bookings.length === 0) {
-      return res.status(404).json({ message: 'No bookings found for this organization' });
+    if (watchlistData.length === 0) {
+      return res.status(404).json({ message: 'No watchlist items found for this organisation' });
     }
 
-    res.status(200).json({ bookings });
+    // Extract the watchlist from the results
+    const watchlist = watchlistData.map(item => item.watchlist).flat();
+
+    res.status(200).json({ watchlist });
   } catch (error) {
-    console.error('Error fetching bookings by organization name:', error);
-    res.status(500).json({ message: 'Failed to fetch bookings', error });
+    console.error('Error fetching watchlist:', error);
+    res.status(500).json({ message: 'Failed to fetch watchlist', error });
   }
 });
 
