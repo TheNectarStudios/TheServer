@@ -58,6 +58,29 @@ router.get('/bookings/key/:key', async (req, res) => {
   }
 });
 
+router.get('/watchlist/organisation/:organizationName', async (req, res) => {
+  try {
+    const { organizationName } = req.params;
+    console.log('Received organizationName:', organizationName); // Debug
+
+    // Query to find all documents where the organizationName matches, and return only the watchlist field
+    const bookings = await Booking.find({ organizationName }, 'watchlist');
+    console.log('Bookings found:', bookings); // Debug
+
+    if (bookings.length === 0) {
+      console.log('No watchlist found for this organization'); // Debug
+      return res.status(404).json({ message: 'No watchlist found for this organization' });
+    }
+
+    // Extract watchlist arrays from each document and combine them
+    const combinedWatchlist = bookings.reduce((acc, booking) => acc.concat(booking.watchlist), []);
+    res.status(200).json({ watchlist: combinedWatchlist });
+  } catch (error) {
+    console.error('Error fetching watchlist by organization name:', error);
+    res.status(500).json({ message: 'Failed to fetch watchlist', error });
+  }
+});
+
 
 // PUT /api/slots/bookings/approve/:key/:propertyName/:parentPropertyName
 router.put('/bookings/approve/:key/:propertyName/:parentPropertyName', async (req, res) => {
@@ -100,9 +123,6 @@ router.put('/bookings/approve/:key/:propertyName/:parentPropertyName', async (re
     res.status(500).json({ message: 'Failed to update slot approval status', error });
   }
 });
-
-module.exports = router;
-
 
 
 module.exports = router;
