@@ -79,9 +79,9 @@ router.get('/watchlist/:organisationName', async (req, res) => {
 
 
 // PUT /api/slots/bookings/approve/:key/:propertyName/:parentPropertyName
-router.put('/bookings/approve/:key/:propertyName/:parentPropertyName', async (req, res) => {
+router.put('/bookings/approve/:propertyName/:parentPropertyName', async (req, res) => {
   try {
-    const { key, propertyName, parentPropertyName } = req.params;
+    const { propertyName, parentPropertyName } = req.params;
     const { approvalStatus } = req.body;
 
     // Validate input
@@ -89,10 +89,14 @@ router.put('/bookings/approve/:key/:propertyName/:parentPropertyName', async (re
       return res.status(400).json({ message: 'Approval status is required' });
     }
 
-    // Find the booking by its unique key
-    const booking = await Booking.findOne({ key });
+    // Find the booking that contains the slot to update
+    const booking = await Booking.findOne({ 
+      'watchlist.propertyName': propertyName, 
+      'watchlist.parentPropertyName': parentPropertyName 
+    });
+    
     if (!booking) {
-      return res.status(404).json({ message: 'No booking found with this key' });
+      return res.status(404).json({ message: 'No booking found with the specified property details' });
     }
 
     // Find and update the slot in the watchlist
@@ -119,6 +123,7 @@ router.put('/bookings/approve/:key/:propertyName/:parentPropertyName', async (re
     res.status(500).json({ message: 'Failed to update slot approval status', error });
   }
 });
+
 
 
 module.exports = router;
